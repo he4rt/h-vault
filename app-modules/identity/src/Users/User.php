@@ -22,6 +22,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
+use Laravel\Sanctum\HasApiTokens;
 use Spatie\Activitylog\Models\Concerns\HasActivity;
 use Spatie\Activitylog\Support\LogOptions;
 use Spatie\MediaLibrary\HasMedia;
@@ -48,6 +49,7 @@ use Spatie\Permission\Traits\HasRoles;
 final class User extends Authenticatable implements FilamentUser, HasMedia
 {
     use HasActivity;
+    use HasApiTokens;
 
     /** @use HasFactory<UserFactory> */
     use HasFactory;

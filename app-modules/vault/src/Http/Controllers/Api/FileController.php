@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace He4rt\Vault\Http\Controllers\Api;
 
 use DateTimeInterface;
+use He4rt\Identity\Users\User;
 use He4rt\Vault\Files\Actions\DeleteFileAction;
 use He4rt\Vault\Files\Actions\StoreFileAction;
 use He4rt\Vault\Files\File;
@@ -19,6 +20,7 @@ class FileController
 {
     public function store(StoreFileRequest $request, StoreFileAction $action): JsonResponse
     {
+        /** @var User|null $user */
         $user = auth('sanctum')->user();
 
         $expiresAt = null;
