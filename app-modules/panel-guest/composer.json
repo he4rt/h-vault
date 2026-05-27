@@ -1,0 +1,25 @@
+{
+    "name": "he4rt/panel-guest",
+    "description": "Public landing page and file preview UI",
+    "type": "library",
+    "version": "1.0.0",
+    "license": "proprietary",
+    "autoload": {
+        "psr-4": {
+            "He4rt\\PanelGuest\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "He4rt\\PanelGuest\\Tests\\": "tests/"
+        }
+    },
+    "minimum-stability": "stable",
+    "extra": {
+        "laravel": {
+            "providers": [
+                "He4rt\\PanelGuest\\PanelGuestServiceProvider"
+            ]
+        }
+    }
+}

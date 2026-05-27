@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "7fe358fcb331c47bdf499de7ea87be64",
+    "content-hash": "7871b1598b0bf06ea6352e043cc94285",
     "packages": [
         {
             "name": "alizharb/filament-activity-log",
@@ -3181,12 +3181,47 @@
             }
         },
         {
+            "name": "he4rt/panel-guest",
+            "version": "1.0.0",
+            "dist": {
+                "type": "path",
+                "url": "app-modules/panel-guest",
+                "reference": "39dab14860f80b2d47614ba9bc20e8c62db952e1"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "He4rt\\PanelGuest\\PanelGuestServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "He4rt\\PanelGuest\\": "src/"
+                }
+            },
+            "autoload-dev": {
+                "psr-4": {
+                    "He4rt\\PanelGuest\\Tests\\": "tests/"
+                }
+            },
+            "license": [
+                "proprietary"
+            ],
+            "description": "Public landing page and file preview UI",
+            "transport-options": {
+                "symlink": true,
+                "relative": true
+            }
+        },
+        {
             "name": "he4rt/security",
             "version": "1.0.0",
             "dist": {
                 "type": "path",
                 "url": "app-modules/security",
-                "reference": "9e57045d75f39e590bc22df10f4371d15f4c7121"
+                "reference": "6067b326fc24e222e9a3858ad67e0d1b0ce619bd"
             },
             "type": "library",
             "extra": {

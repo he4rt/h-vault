@@ -8,3 +8,4 @@ bun.lock
 composer.lock
 storage/
 .ai/guidelines/
+*.blade.php
