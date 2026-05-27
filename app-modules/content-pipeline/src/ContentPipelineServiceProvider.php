@@ -18,9 +18,11 @@ class ContentPipelineServiceProvider extends ServiceProvider
     {
         $this->mergeConfigFrom(__DIR__.'/../config/content-pipeline.php', 'content-pipeline');
 
-        $this->app->bind(fn (): AntivirusScanner => match (config('content-pipeline.antivirus.driver')) {
-            default => new NullScanner(),
-        });
+        $this->app->bind(
+            // Additional drivers (e.g. 'clamav') can be added to the match as the project grows.
+            fn (): AntivirusScanner => match (config('content-pipeline.antivirus.driver')) {
+                default => new NullScanner(),
+            });
     }
 
     public function boot(): void
