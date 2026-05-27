@@ -7,6 +7,7 @@ namespace He4rt\Vault;
 use He4rt\Vault\Albums\Album;
 use He4rt\Vault\Buckets\Bucket;
 use He4rt\Vault\Files\File;
+use He4rt\Vault\TTL\CleanExpiredFilesCommand;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\ServiceProvider;
 
@@ -15,6 +16,10 @@ class VaultServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->mergeConfigFrom(__DIR__.'/../config/vault.php', 'vault');
+
+        $this->commands([
+            CleanExpiredFilesCommand::class,
+        ]);
     }
 
     public function boot(): void
