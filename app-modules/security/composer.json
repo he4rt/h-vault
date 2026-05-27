@@ -1,0 +1,27 @@
+{
+    "name": "he4rt/security",
+    "description": "Rate limiting, IP blocking for vault API",
+    "type": "library",
+    "version": "1.0.0",
+    "license": "proprietary",
+    "autoload": {
+        "psr-4": {
+            "He4rt\\Security\\": "src/",
+            "He4rt\\Security\\Database\\Factories\\": "database/factories/",
+            "He4rt\\Security\\Database\\Seeders\\": "database/seeders/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "He4rt\\Security\\Tests\\": "tests/"
+        }
+    },
+    "minimum-stability": "stable",
+    "extra": {
+        "laravel": {
+            "providers": [
+                "He4rt\\Security\\SecurityServiceProvider"
+            ]
+        }
+    }
+}

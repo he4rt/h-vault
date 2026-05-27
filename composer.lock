@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "394c9ebf02f08a8c8c9d72c7f62773d8",
+    "content-hash": "7fe358fcb331c47bdf499de7ea87be64",
     "packages": [
         {
             "name": "alizharb/filament-activity-log",
@@ -3077,7 +3077,7 @@
             "dist": {
                 "type": "path",
                 "url": "app-modules/content-pipeline",
-                "reference": "5ae3ac0053a46ede6d5c1ca96b6e75e399892418"
+                "reference": "ef56f3bc8651fc8e8f5346d7fd5719a07c2d353f"
             },
             "type": "library",
             "extra": {
@@ -3175,6 +3175,43 @@
             "license": [
                 "proprietary"
             ],
+            "transport-options": {
+                "symlink": true,
+                "relative": true
+            }
+        },
+        {
+            "name": "he4rt/security",
+            "version": "1.0.0",
+            "dist": {
+                "type": "path",
+                "url": "app-modules/security",
+                "reference": "9e57045d75f39e590bc22df10f4371d15f4c7121"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "He4rt\\Security\\SecurityServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "He4rt\\Security\\": "src/",
+                    "He4rt\\Security\\Database\\Factories\\": "database/factories/",
+                    "He4rt\\Security\\Database\\Seeders\\": "database/seeders/"
+                }
+            },
+            "autoload-dev": {
+                "psr-4": {
+                    "He4rt\\Security\\Tests\\": "tests/"
+                }
+            },
+            "license": [
+                "proprietary"
+            ],
+            "description": "Rate limiting, IP blocking for vault API",
             "transport-options": {
                 "symlink": true,
                 "relative": true
