@@ -1,0 +1,27 @@
+{
+    "name": "he4rt/vault",
+    "description": "Core vault module: files, upload API, storage",
+    "type": "library",
+    "version": "1.0.0",
+    "license": "proprietary",
+    "autoload": {
+        "psr-4": {
+            "He4rt\\Vault\\": "src/",
+            "He4rt\\Vault\\Database\\Factories\\": "database/factories/",
+            "He4rt\\Vault\\Database\\Seeders\\": "database/seeders/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "He4rt\\Vault\\Tests\\": "tests/"
+        }
+    },
+    "minimum-stability": "stable",
+    "extra": {
+        "laravel": {
+            "providers": [
+                "He4rt\\Vault\\VaultServiceProvider"
+            ]
+        }
+    }
+}
