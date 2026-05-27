@@ -78,6 +78,7 @@ final class User extends Authenticatable implements FilamentUser, HasMedia
     {
         return match ($panel->currentPanel()) {
             FilamentPanel::Admin => $this->hasRole(Roles::SuperAdmin),
+            FilamentPanel::App => true,
             default => false,
         };
     }

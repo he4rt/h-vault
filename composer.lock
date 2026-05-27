@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "7871b1598b0bf06ea6352e043cc94285",
+    "content-hash": "c8087e98fc8e6bd1ebd9fcd52ca04e4e",
     "packages": [
         {
             "name": "alizharb/filament-activity-log",
@@ -3175,6 +3175,43 @@
             "license": [
                 "proprietary"
             ],
+            "transport-options": {
+                "symlink": true,
+                "relative": true
+            }
+        },
+        {
+            "name": "he4rt/panel-app",
+            "version": "1.0.0",
+            "dist": {
+                "type": "path",
+                "url": "app-modules/panel-app",
+                "reference": "25470875333e662fb3ae68485da4a22248ebad42"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "He4rt\\PanelApp\\PanelAppServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "He4rt\\PanelApp\\": "src/",
+                    "He4rt\\PanelApp\\Database\\Factories\\": "database/factories/",
+                    "He4rt\\PanelApp\\Database\\Seeders\\": "database/seeders/"
+                }
+            },
+            "autoload-dev": {
+                "psr-4": {
+                    "He4rt\\PanelApp\\Tests\\": "tests/"
+                }
+            },
+            "license": [
+                "proprietary"
+            ],
+            "description": "Filament user panel for file, bucket, and album management",
             "transport-options": {
                 "symlink": true,
                 "relative": true
