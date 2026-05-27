@@ -7,5 +7,6 @@ namespace App\Enums;
 enum FilamentPanel: string
 {
     case Admin = 'admin';
+    case App = 'app';
     case KnowledgeBase = 'knowledge-base';
 }

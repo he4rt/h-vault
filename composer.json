@@ -19,6 +19,7 @@
         "internachi/modular": "^3.0.2",
         "joaopaulolndev/filament-edit-profile": "^3.0.2",
         "laravel/framework": "^13.9.0",
+        "laravel/sanctum": "^4.0",
         "laravel/tinker": "^3.0.2",
         "league/flysystem-sftp-v3": "^3.33.0",
         "monicahq/laravel-cloudflare": "^4.1.0",
