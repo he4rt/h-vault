@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "87e2b4bd4349228ffd4eb23c074ef23a",
+    "content-hash": "394c9ebf02f08a8c8c9d72c7f62773d8",
     "packages": [
         {
             "name": "alizharb/filament-activity-log",
@@ -3072,6 +3072,43 @@
             "time": "2025-08-22T14:27:06+00:00"
         },
         {
+            "name": "he4rt/content-pipeline",
+            "version": "1.0.0",
+            "dist": {
+                "type": "path",
+                "url": "app-modules/content-pipeline",
+                "reference": "5ae3ac0053a46ede6d5c1ca96b6e75e399892418"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "He4rt\\ContentPipeline\\ContentPipelineServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "He4rt\\ContentPipeline\\": "src/",
+                    "He4rt\\ContentPipeline\\Database\\Factories\\": "database/factories/",
+                    "He4rt\\ContentPipeline\\Database\\Seeders\\": "database/seeders/"
+                }
+            },
+            "autoload-dev": {
+                "psr-4": {
+                    "He4rt\\ContentPipeline\\Tests\\": "tests/"
+                }
+            },
+            "license": [
+                "proprietary"
+            ],
+            "description": "Async content processing: thumbnails, zip, antivirus scanning",
+            "transport-options": {
+                "symlink": true,
+                "relative": true
+            }
+        },
+        {
             "name": "he4rt/identity",
             "version": "1.0.0",
             "dist": {
@@ -3138,6 +3175,43 @@
             "license": [
                 "proprietary"
             ],
+            "transport-options": {
+                "symlink": true,
+                "relative": true
+            }
+        },
+        {
+            "name": "he4rt/vault",
+            "version": "1.0.0",
+            "dist": {
+                "type": "path",
+                "url": "app-modules/vault",
+                "reference": "19e69af4cb5195a1ee81468c1e18f85ada5171fc"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "He4rt\\Vault\\VaultServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "He4rt\\Vault\\": "src/",
+                    "He4rt\\Vault\\Database\\Factories\\": "database/factories/",
+                    "He4rt\\Vault\\Database\\Seeders\\": "database/seeders/"
+                }
+            },
+            "autoload-dev": {
+                "psr-4": {
+                    "He4rt\\Vault\\Tests\\": "tests/"
+                }
+            },
+            "license": [
+                "proprietary"
+            ],
+            "description": "Core vault module: files, upload API, storage",
             "transport-options": {
                 "symlink": true,
                 "relative": true

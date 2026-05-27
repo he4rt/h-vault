@@ -1,0 +1,27 @@
+{
+    "name": "he4rt/content-pipeline",
+    "description": "Async content processing: thumbnails, zip, antivirus scanning",
+    "type": "library",
+    "version": "1.0.0",
+    "license": "proprietary",
+    "autoload": {
+        "psr-4": {
+            "He4rt\\ContentPipeline\\": "src/",
+            "He4rt\\ContentPipeline\\Database\\Factories\\": "database/factories/",
+            "He4rt\\ContentPipeline\\Database\\Seeders\\": "database/seeders/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "He4rt\\ContentPipeline\\Tests\\": "tests/"
+        }
+    },
+    "minimum-stability": "stable",
+    "extra": {
+        "laravel": {
+            "providers": [
+                "He4rt\\ContentPipeline\\ContentPipelineServiceProvider"
+            ]
+        }
+    }
+}
