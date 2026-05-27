@@ -18,11 +18,7 @@ class ContentPipelineServiceProvider extends ServiceProvider
     {
         $this->mergeConfigFrom(__DIR__.'/../config/content-pipeline.php', 'content-pipeline');
 
-        $this->app->bind(
-            // Additional drivers (e.g. 'clamav') can be added to the match as the project grows.
-            fn (): AntivirusScanner => match (config('content-pipeline.antivirus.driver')) {
-                default => new NullScanner(),
-            });
+        $this->app->bind(AntivirusScanner::class, $this->resolveAntivirusDriver(...));
     }
 
     public function boot(): void
@@ -32,5 +28,13 @@ class ContentPipelineServiceProvider extends ServiceProvider
         // one event per listener via the handle() type-hint.
         Event::listen(FileExpired::class, CleanupThumbnailListener::class);
         Event::listen(FileDeleted::class, CleanupThumbnailListener::class);
+    }
+
+    private function resolveAntivirusDriver(): AntivirusScanner
+    {
+        // Additional drivers (e.g. 'clamav') can be added to the match as the project grows.
+        return match (config('content-pipeline.antivirus.driver')) {
+            default => new NullScanner(),
+        };
     }
 }
