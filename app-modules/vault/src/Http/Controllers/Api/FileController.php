@@ -14,6 +14,7 @@ use He4rt\Vault\Http\Resources\FileResource;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\Response;
 
 class FileController
@@ -43,6 +44,8 @@ class FileController
 
     public function show(string $token): FileResource
     {
+        abort_unless(Str::isUuid($token), Response::HTTP_NOT_FOUND);
+
         $file = File::query()->where('token', $token)->firstOrFail();
 
         return new FileResource($file);
@@ -50,6 +53,8 @@ class FileController
 
     public function update(Request $request, string $token): FileResource
     {
+        abort_unless(Str::isUuid($token), Response::HTTP_NOT_FOUND);
+
         $file = File::query()->where('token', $token)->firstOrFail();
 
         $this->authorizeFileOwner($request, $file);
@@ -74,6 +79,8 @@ class FileController
 
     public function destroy(Request $request, string $token, DeleteFileAction $action): JsonResponse
     {
+        abort_unless(Str::isUuid($token), Response::HTTP_NOT_FOUND);
+
         $file = File::query()->where('token', $token)->firstOrFail();
 
         $this->authorizeFileOwner($request, $file);

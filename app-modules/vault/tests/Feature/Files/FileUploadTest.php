@@ -95,7 +95,7 @@ test('upload with custom expires_in', function (): void {
     $response->assertCreated();
 
     $file = File::query()->first();
-    expect($file->expires_at->diffInHours(now()))->toBeBetween(23, 25);
+    expect(now()->diffInHours($file->expires_at))->toBeBetween(23, 25);
 });
 
 test('upload without file returns validation error', function (): void {
