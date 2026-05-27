@@ -6,6 +6,8 @@ namespace He4rt\Vault\Files;
 
 use App\Models\BaseModel;
 use He4rt\Identity\Users\User;
+use He4rt\Vault\Albums\Album;
+use He4rt\Vault\Buckets\Bucket;
 use He4rt\Vault\Database\Factories\Files\FileFactory;
 use He4rt\Vault\Enums\FileStatus;
 use He4rt\Vault\Events\FileStatusChanged;
@@ -19,6 +21,8 @@ use Illuminate\Support\Carbon;
  * @property-read string $id
  * @property string $token
  * @property string|null $uploaded_by
+ * @property string|null $bucket_id
+ * @property string|null $album_id
  * @property string $original_name
  * @property string $storage_path
  * @property string $mime_type
@@ -32,6 +36,8 @@ use Illuminate\Support\Carbon;
  * @property-read Carbon $updated_at
  * @property-read Carbon|null $deleted_at
  * @property-read User|null $uploader
+ * @property-read Bucket|null $bucket
+ * @property-read Album|null $album
  */
 #[UsePolicy(FilePolicy::class)]
 #[UseFactory(FileFactory::class)]
@@ -53,6 +59,22 @@ final class File extends BaseModel
     public function uploader(): BelongsTo
     {
         return $this->belongsTo(User::class, 'uploaded_by');
+    }
+
+    /**
+     * @return BelongsTo<Bucket, $this>
+     */
+    public function bucket(): BelongsTo
+    {
+        return $this->belongsTo(Bucket::class, 'bucket_id');
+    }
+
+    /**
+     * @return BelongsTo<Album, $this>
+     */
+    public function album(): BelongsTo
+    {
+        return $this->belongsTo(Album::class, 'album_id');
     }
 
     public function isProtected(): bool

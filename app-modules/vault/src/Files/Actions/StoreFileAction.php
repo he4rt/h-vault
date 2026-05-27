@@ -22,6 +22,7 @@ class StoreFileAction
         ?string $password = null,
         bool $isOneTime = false,
         ?DateTimeInterface $expiresAt = null,
+        ?string $bucketId = null,
     ): File {
         $token = Str::uuid()->toString();
         $extension = $uploadedFile->getClientOriginalExtension() ?: 'bin';
@@ -42,6 +43,7 @@ class StoreFileAction
         $file = File::query()->create([
             'token' => $token,
             'uploaded_by' => $user?->id,
+            'bucket_id' => $bucketId,
             'original_name' => $uploadedFile->getClientOriginalName(),
             'storage_path' => $storagePath,
             'mime_type' => $uploadedFile->getMimeType() ?? 'application/octet-stream',

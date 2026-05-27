@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace He4rt\Vault;
 
+use He4rt\Vault\Albums\Album;
+use He4rt\Vault\Buckets\Bucket;
 use He4rt\Vault\Files\File;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\ServiceProvider;
@@ -22,6 +24,8 @@ class VaultServiceProvider extends ServiceProvider
 
         Relation::enforceMorphMap([
             'vault_file' => File::class,
+            'vault_bucket' => Bucket::class,
+            'vault_album' => Album::class,
         ]);
     }
 }
