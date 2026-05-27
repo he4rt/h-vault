@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Database\Seeders;
 
 use He4rt\Identity\Users\User;
+use He4rt\Vault\Database\Seeders\VaultSeeder;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Artisan;
 
@@ -20,6 +21,10 @@ final class DatabaseSeeder extends Seeder
         if (app()->isLocal()) {
             $this->spawnAdminUser();
         }
+
+        $this->call([
+            VaultSeeder::class,
+        ]);
 
         $this->output('Database seeding completed successfully. Have fun!');
     }
