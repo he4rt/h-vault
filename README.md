@@ -1,28 +1,33 @@
 # H-Vault
 
-Servi de hospedagem de arquivos temporarios inspirado no [WaifuVault](https://waifuvault.moe), reconstruido do zero em Laravel.
+Servico de hospedagem de arquivos temporarios inspirado no [WaifuVault](https://waifuvault.moe), reconstruido do zero em Laravel.
 
-Upload anonimo com limites ou autenticado via Sanctum. Arquivos expiram automaticamente com base em uma curva de TTL proporcional ao tamanho. Painel de administracao via Filament, painel do usuario para gerenciar buckets e albuns, e uma landing page publica com Livewire + Flux UI.
+Upload anonimo com limites ou autenticado via Sanctum. Arquivos expiram automaticamente com base em uma curva de TTL proporcional ao tamanho. Painel de administracao via Filament, painel do usuario para gerenciar buckets e albuns, e uma landing page publica com Livewire.
 
 ## Stack
 
-| Componente       | Tecnologia                           |
-| :--------------- | :----------------------------------- |
-| Framework        | Laravel 13                           |
-| Admin Panel      | Filament v5 (`panel-admin`)          |
-| User Panel       | Filament v5 (`panel-app`)            |
-| Landing Page     | Livewire v4 + Flux UI                |
-| API Auth         | Laravel Sanctum (Bearer tokens)      |
-| Storage          | Flysystem S3 (Cloudflare R2 / MinIO) |
-| Database         | PostgreSQL 18                        |
-| Cache / Queues   | Redis 8                              |
-| Queue Monitor    | Laravel Horizon                      |
-| Image Processing | Intervention Image (Imagick)         |
-| Antivirus        | ClamAV (CLI)                         |
-| File Reputation  | VirusTotal API                       |
-| CAPTCHA          | Cloudflare Turnstile                 |
-| Real-time        | Laravel Reverb                       |
-| Containerizacao  | Docker Compose                       |
+| Componente       | Tecnologia                                         |
+| :--------------- | :------------------------------------------------- |
+| Framework        | Laravel 13                                         |
+| Admin Panel      | Filament v5 (`panel-admin`)                        |
+| User Panel       | Filament v5 (`panel-app`)                          |
+| Landing Page     | Livewire v4 + Tailwind CSS (`panel-guest`)         |
+| API Auth         | Laravel Sanctum (Bearer tokens)                    |
+| Storage          | Flysystem S3 (Cloudflare R2 / MinIO / local)       |
+| Database         | SQLite (dev) / PostgreSQL (prod)                   |
+| Cache / Queues   | Database (dev) / Redis (prod)                      |
+| Image Processing | Imagick (thumbnails via content-pipeline)          |
+| Antivirus        | NullScanner (MVP) — contrato para ClamAV           |
+| Containerizacao  | Docker Compose (PostgreSQL, Redis, MinIO, Mailpit) |
+
+### Nao implementado (planejado)
+
+| Componente      | Tecnologia      | Status              |
+| :-------------- | :-------------- | :------------------ |
+| Queue Monitor   | Laravel Horizon | Nao configurado     |
+| Real-time       | Laravel Reverb  | Deferido (ADR-0006) |
+| File Reputation | VirusTotal API  | Nao implementado    |
+| ClamAV Driver   | ClamAV (CLI)    | Contrato pronto     |
 
 ## Arquitetura
 
@@ -48,20 +53,16 @@ Monolito modular com `internachi/modular`. Cada modulo eh um bounded context iso
      │                                  │
      ▼                                  ▼
 ┌────────────────────┐    ┌────────────────────┐
-│ content-pipeline   │    │    analytics       │
-│  Thumbnails        │    │  Counters          │
-│  Zip               │    │  Broadcasting      │
-│  Antivirus         │    │  Stats             │
-└────────┬───────────┘    └────────────────────┘
-         │
-         │ dispatch Events
-         ▼
+│ content-pipeline   │    │    panel-guest     │
+│  Thumbnails        │    │  Landing page      │
+│  Zip               │    │  File preview      │
+│  NullScanner       │    │  (Livewire)        │
+└────────────────────┘    └────────────────────┘
+
 ┌────────────────────┐
 │    security        │
 │  Rate Limiting     │
 │  IP Blocking       │
-│  CAPTCHA           │
-│  File Reputation   │
 └────────────────────┘
 ```
 
@@ -75,27 +76,27 @@ Core compartilhado. Users, Teams, Roles (Spatie Permission), ExternalIdentity. T
 
 ### `vault`
 
-Coracao do negocio. Models de File, Bucket e Album. API REST publica. Actions para upload, download e delecao. Calculo de TTL. Scheduled command para limpeza de arquivos expirados.
+Coracao do negocio. Models de File, Bucket e Album. API REST publica. Actions para upload, download e delecao. Calculo de TTL com curva cubica. Scheduled command para limpeza de arquivos expirados.
 
 ### `content-pipeline`
 
-Processamento assincrono de conteudo. Escuta events do `vault` e despacha jobs em filas dedicadas. Thumbnails via Intervention Image, zip via ZipArchive, scan antivirus via ClamAV. Emite seus proprios events quando o processamento termina.
+Processamento assincrono de conteudo. Escuta events do `vault` e despacha jobs em filas dedicadas. Thumbnails via Imagick, zip via ZipArchive. Scanner de antivirus via contrato (`AntivirusScanner` interface) com `NullScanner` como driver default no MVP (ver ADR-0005).
 
 ### `security`
 
-Rate limiting, bloqueio de IP, verificacao CAPTCHA e checagem de reputacao de arquivo via VirusTotal. Escuta events do `content-pipeline` para reagir a scans completos. Middleware de bloqueio de IP aplicado nas rotas do vault.
+Rate limiting por IP (anonimo) e por usuario (autenticado). Bloqueio de IP com middleware aplicado nas rotas do vault. Sem CAPTCHA (ver ADR-0003).
+
+### `panel-guest`
+
+Paginas publicas construidas com Livewire + Tailwind CSS. Landing page com upload form drag-and-drop em `/`. File preview em `/preview/{token}/{filename}` com renderizacao por mime type (imagem, video, audio, PDF, generico). Verificacao de senha para arquivos protegidos.
 
 ### `panel-app`
 
-Painel Filament do usuario. Resources para Files, Buckets e Albums. Widgets de uso de storage e uploads recentes. Tambem contem as paginas Livewire publicas: landing page (hero + upload + SDK info) e pagina de download com verificacao de senha.
-
-### `analytics`
-
-Metricas e contadores em tempo real. Escuta events do vault para manter contadores Redis. Broadcasting via Laravel Reverb para atualizar o frontend em tempo real.
+Painel Filament do usuario em `/app`. Resources para Files, Buckets e Albums com scoping por usuario autenticado. Widgets de uso de storage e uploads recentes.
 
 ### `panel-admin` (existente)
 
-Painel Filament administrativo. Resources para gerenciamento de arquivos, IPs bloqueados e estatisticas do sistema.
+Painel Filament administrativo em `/admin`. Resources para gerenciamento de todos os arquivos (moderacao, quarentena), IPs bloqueados e widgets de estatisticas do sistema.
 
 ## Estrutura de Modulos
 
@@ -112,26 +113,22 @@ app-modules/
 │
 ├── vault/                             # Core: Files, Buckets, Albums, API
 │   ├── config/
-│   │   └── vault.php                  #   upload limits, TTL curve, storage disk, allowed mimes
+│   │   └── vault.php                  #   upload limits, TTL curve, storage disk
 │   ├── src/
-│   │   ├── Providers/
-│   │   │   └── VaultServiceProvider.php
+│   │   ├── VaultServiceProvider.php
+│   │   ├── Enums/FileStatus.php       #   Enum: pending, clean, infected, quarantined
 │   │   ├── Files/
 │   │   │   ├── File.php               #   Model
-│   │   │   ├── FilePolicy.php
-│   │   │   ├── FileStatus.php         #   Enum: pending, clean, infected, quarantined
 │   │   │   └── Actions/
 │   │   │       ├── StoreFileAction.php
 │   │   │       ├── ServeFileAction.php
 │   │   │       └── DeleteFileAction.php
 │   │   ├── Buckets/
 │   │   │   ├── Bucket.php
-│   │   │   ├── BucketPolicy.php
 │   │   │   └── Actions/
 │   │   │       └── CreateBucketAction.php
 │   │   ├── Albums/
-│   │   │   ├── Album.php
-│   │   │   └── AlbumPolicy.php
+│   │   │   └── Album.php
 │   │   ├── TTL/
 │   │   │   ├── TtlCalculator.php
 │   │   │   └── CleanExpiredFilesCommand.php
@@ -140,15 +137,10 @@ app-modules/
 │   │   │   │   ├── FileController.php
 │   │   │   │   ├── BucketController.php
 │   │   │   │   ├── AlbumController.php
+│   │   │   │   ├── AuthTokenController.php
 │   │   │   │   └── FileServeController.php
 │   │   │   ├── Requests/
-│   │   │   │   ├── StoreFileRequest.php
-│   │   │   │   ├── StoreBucketRequest.php
-│   │   │   │   └── StoreAlbumRequest.php
 │   │   │   └── Resources/
-│   │   │       ├── FileResource.php
-│   │   │       ├── BucketResource.php
-│   │   │       └── AlbumResource.php
 │   │   └── Events/
 │   │       ├── FileUploaded.php
 │   │       ├── FileDownloaded.php
@@ -156,26 +148,22 @@ app-modules/
 │   │       ├── FileDeleted.php
 │   │       ├── FileStatusChanged.php
 │   │       └── BucketCreated.php
-│   ├── routes/
-│   │   └── vault-api.php
+│   ├── resources/routes/api.php
 │   ├── database/
 │   │   ├── migrations/
-│   │   ├── factories/
-│   │   └── seeders/
+│   │   └── factories/
 │   └── tests/
 │
 ├── content-pipeline/                  # Processamento assincrono
 │   ├── config/
-│   │   └── content-pipeline.php       #   thumbnail sizes, antivirus path, zip limits
+│   │   └── content-pipeline.php       #   thumbnail sizes, antivirus driver
 │   ├── src/
-│   │   ├── Providers/
-│   │   │   └── ContentPipelineServiceProvider.php
+│   │   ├── ContentPipelineServiceProvider.php
 │   │   ├── Thumbnails/
 │   │   │   ├── GenerateThumbnailJob.php
 │   │   │   ├── GenerateThumbnailListener.php
 │   │   │   └── ThumbnailGenerator.php
 │   │   ├── Zip/
-│   │   │   ├── CreateZipArchiveJob.php
 │   │   │   └── ZipArchiveService.php
 │   │   ├── Antivirus/
 │   │   │   ├── ScanFileJob.php
@@ -183,86 +171,64 @@ app-modules/
 │   │   │   ├── Contracts/
 │   │   │   │   └── AntivirusScanner.php
 │   │   │   └── Drivers/
-│   │   │       ├── ClamAvScanner.php
 │   │   │       └── NullScanner.php
 │   │   ├── Events/
 │   │   │   ├── FileScanCompleted.php
 │   │   │   ├── FileScanFailed.php
 │   │   │   └── ThumbnailGenerated.php
 │   │   └── Listeners/
-│   │       └── UpdateFileStatusListener.php
+│   │       ├── UpdateFileStatusListener.php
+│   │       └── CleanupThumbnailListener.php
 │   └── tests/
 │
-├── security/                          # Rate limiting, IP blocking, CAPTCHA
-│   ├── config/
-│   │   └── security.php               #   rate limits, captcha provider, virustotal key
+├── security/                          # Rate limiting, IP blocking
 │   ├── src/
-│   │   ├── Providers/
-│   │   │   └── SecurityServiceProvider.php
+│   │   ├── SecurityServiceProvider.php
 │   │   ├── RateLimiting/
 │   │   │   └── VaultRateLimiter.php
 │   │   ├── IpBlocking/
 │   │   │   ├── BlockedIp.php
 │   │   │   ├── BlockIpAction.php
 │   │   │   └── IpBlockingMiddleware.php
-│   │   ├── Captcha/
-│   │   │   ├── Contracts/
-│   │   │   │   └── CaptchaVerifier.php
-│   │   │   └── Drivers/
-│   │   │       ├── TurnstileVerifier.php
-│   │   │       ├── RecaptchaVerifier.php
-│   │   │       └── NullVerifier.php
-│   │   ├── FileReputation/
-│   │   │   ├── CheckFileReputationListener.php
-│   │   │   ├── VirusTotalClient.php
-│   │   │   └── Events/
-│   │   │       └── FileQuarantined.php
 │   │   └── Listeners/
 │   │       └── BlockSuspiciousIpListener.php
 │   └── tests/
 │
-├── panel-app/                         # Filament user panel + Landing
+├── panel-guest/                       # Landing page + File preview
 │   ├── src/
-│   │   ├── Providers/
-│   │   │   └── PanelAppServiceProvider.php
-│   │   ├── Filament/
-│   │   │   ├── Resources/
-│   │   │   │   ├── FileResource.php
-│   │   │   │   ├── BucketResource.php
-│   │   │   │   └── AlbumResource.php
-│   │   │   ├── Pages/
-│   │   │   │   └── Dashboard.php
-│   │   │   └── Widgets/
-│   │   │       ├── StorageUsageWidget.php
-│   │   │       └── RecentUploadsWidget.php
+│   │   ├── PanelGuestServiceProvider.php
 │   │   └── Livewire/
 │   │       ├── Landing.php
-│   │       └── FileDownload.php
-│   ├── resources/views/livewire/
-│   │   ├── landing.blade.php
-│   │   └── file-download.blade.php
-│   └── routes/
-│       └── panel-app-routes.php
+│   │       └── FilePreview.php
+│   ├── resources/
+│   │   ├── views/livewire/
+│   │   │   ├── landing.blade.php
+│   │   │   └── file-preview.blade.php
+│   │   └── views/layouts/
+│   │       └── guest.blade.php
+│   ├── resources/routes/web.php
+│   └── tests/
 │
-├── analytics/                         # Metricas e real-time
-│   ├── config/
-│   │   └── analytics.php              #   counter strategy, broadcast driver
+├── panel-app/                         # Filament user panel
 │   ├── src/
-│   │   ├── Providers/
-│   │   │   └── AnalyticsServiceProvider.php
-│   │   ├── Counters/
-│   │   │   ├── FileCounter.php
-│   │   │   └── BandwidthTracker.php
-│   │   ├── Listeners/
-│   │   │   ├── IncrementFileCounterListener.php
-│   │   │   ├── DecrementFileCounterListener.php
-│   │   │   ├── TrackDownloadListener.php
-│   │   │   └── TrackUploadListener.php
-│   │   └── Broadcasting/
-│   │       └── FileCountUpdated.php
+│   │   └── Filament/
+│   │       ├── Resources/
+│   │       │   ├── Files/FileResource.php
+│   │       │   └── Buckets/BucketResource.php
+│   │       └── Widgets/
+│   │           ├── StorageUsageWidget.php
+│   │           └── RecentUploadsWidget.php
 │   └── tests/
 │
 └── panel-admin/                       # (EXISTE) Admin Panel
+    └── src/
+        └── Filament/
+            ├── Resources/
+            │   ├── Files/FileResource.php
+            │   └── BlockedIps/BlockedIpResource.php
+            └── Widgets/
+                ├── TotalFilesWidget.php
+                └── FilesByStatusWidget.php
 ```
 
 ## Event-Driven Communication
@@ -271,18 +237,16 @@ Modulos nao importam classes uns dos outros. Comunicacao acontece via Events que
 
 ### Mapa de Events
 
-| Event                  | Modulo Emissor   | Listeners (Modulo Receptor)                                     |
-| :--------------------- | :--------------- | :-------------------------------------------------------------- |
-| `FileUploaded`         | vault            | content-pipeline (thumbnail, scan), analytics (counter)         |
-| `FileDownloaded`       | vault            | analytics (counter, bandwidth)                                  |
-| `FileExpired`          | vault            | content-pipeline (cleanup thumbnail), analytics (counter)       |
-| `FileDeleted`          | vault            | content-pipeline (cleanup), analytics (counter)                 |
-| `BucketCreated`        | vault            | analytics (counter)                                             |
-| `FileScanCompleted`    | content-pipeline | security (reputation check), vault (update status via listener) |
-| `FileScanFailed`       | content-pipeline | vault (mark as failed)                                          |
-| `ThumbnailGenerated`   | content-pipeline | vault (update thumbnail_path)                                   |
-| `FileQuarantined`      | security         | vault (soft delete), analytics (alert)                          |
-| `SuspiciousIpDetected` | security         | vault (block uploads from IP)                                   |
+| Event                | Modulo Emissor   | Listeners (Modulo Receptor)                                        |
+| :------------------- | :--------------- | :----------------------------------------------------------------- |
+| `FileUploaded`       | vault            | content-pipeline (thumbnail + scan)                                |
+| `FileDownloaded`     | vault            | (sem listeners no MVP)                                             |
+| `FileExpired`        | vault            | content-pipeline (cleanup thumbnail)                               |
+| `FileDeleted`        | vault            | content-pipeline (cleanup thumbnail)                               |
+| `BucketCreated`      | vault            | (sem listeners no MVP)                                             |
+| `FileScanCompleted`  | content-pipeline | content-pipeline (update file status via UpdateFileStatusListener) |
+| `FileScanFailed`     | content-pipeline | (sem listeners no MVP)                                             |
+| `ThumbnailGenerated` | content-pipeline | (sem listeners no MVP)                                             |
 
 ### Fluxo: Upload de Arquivo
 
@@ -292,10 +256,9 @@ Modulos nao importam classes uns dos outros. Comunicacao acontece via Events que
   |  PUT /api/v1/files                     |
   |  (multipart: file + password? + ttl?)  |
   | ────────────────────────────────────>  |
-  |                                        |  vault: StoreFileRequest
-  |                                        |    validation: mimes, max size, captcha
   |                                        |  vault: StoreFileAction
-  |                                        |    Storage::disk('s3')->putFileAs(...)
+  |                                        |    validation: mimes, max size
+  |                                        |    Storage::disk(config)->putFileAs(...)
   |                                        |    File::create([...])
   |                                        |    FileUploaded::dispatch($file)
   |                                        |
@@ -318,21 +281,7 @@ Modulos nao importam classes uns dos outros. Comunicacao acontece via Events que
   |  |   -> handle(FileUploaded)       |   |
   |  |   -> ScanFileJob                |   |
   |  |      queue: antivirus           |   |
-  |  └────────────────────────────────┘   |
-  |                                        |
-  |  ┌─ analytics ────────────────────┐   |
-  |  | IncrementFileCounterListener   |   |
-  |  |   -> handle(FileUploaded)       |   |
-  |  |   -> Redis INCR files:total    |   |
-  |  |   -> broadcast(FileCountUpdated)|  |
-  |  └────────────────────────────────┘   |
-  |                                        |
-  |  ┌─ security ─────────────────────┐   |
-  |  | CheckFileReputationListener    |   |
-  |  |   -> handle(FileScanCompleted)  |   |
-  |  |   -> VirusTotal API            |   |
-  |  |   -> se malicioso:             |   |
-  |  |      FileQuarantined::dispatch |   |
+  |  |      driver: NullScanner (MVP)  |   |
   |  └────────────────────────────────┘   |
 ```
 
@@ -349,14 +298,9 @@ Modulos nao importam classes uns dos outros. Comunicacao acontece via Events que
   |                                        |    verificar: senha? -> 403
   |                                        |    verificar: one-time? -> soft delete apos
   |                                        |
-  |    Stream do arquivo via S3            |
+  |    Stream do arquivo (proxy)           |
   | <────────────────────────────────────  |
   |                                        |  FileDownloaded::dispatch($file)
-  |                                        |
-  |  ┌─ analytics ────────────────────┐   |
-  |  | TrackDownloadListener          |   |
-  |  |   -> bandwidth tracking        |   |
-  |  └────────────────────────────────┘   |
 ```
 
 ### Fluxo: Expiracao Automatica
@@ -366,9 +310,9 @@ Modulos nao importam classes uns dos outros. Comunicacao acontece via Events que
   |                                        |
   |  hourly: CleanExpiredFilesCommand      |
   | ────────────────────────────────────>  |
-  |                                        |  vault: File::expired()  (scope on vault_files)
+  |                                        |  vault: File::expired() scope
   |                                        |    ->chunkById(100, function ($files) {
-  |                                        |      foreach: Storage::disk('s3')->delete(...)
+  |                                        |      foreach: Storage::delete(...)
   |                                        |      foreach: FileExpired::dispatch($file)
   |                                        |      $file->forceDelete()
   |                                        |    })
@@ -376,13 +320,7 @@ Modulos nao importam classes uns dos outros. Comunicacao acontece via Events que
   |  ┌─ content-pipeline ──────────────┐   |
   |  | CleanupThumbnailListener       |   |
   |  |   -> handle(FileExpired)        |   |
-  |  |   -> delete thumbnail from S3  |   |
-  |  └────────────────────────────────┘   |
-  |                                        |
-  |  ┌─ analytics ────────────────────┐   |
-  |  | DecrementFileCounterListener   |   |
-  |  |   -> handle(FileExpired)        |   |
-  |  |   -> Redis DECR files:total    |   |
+  |  |   -> delete thumbnail           |   |
   |  └────────────────────────────────┘   |
 ```
 
@@ -407,11 +345,16 @@ PATCH  /api/v1/files/{token}       # Atualizar (password, TTL)
 DELETE /api/v1/files/{token}       # Deletar
 ```
 
-### File Serving
+### File Serving (raw download)
 
 ```
-GET /f/{token}/{filename}          # Download/stream do arquivo
-GET /f/{token}/thumbnail           # Thumbnail
+GET /f/{token}/{filename}          # Download/stream do arquivo (proxy)
+```
+
+### File Preview (pagina HTML)
+
+```
+GET /preview/{token}/{filename}    # Preview com renderizacao por mime type
 ```
 
 ### Buckets (requer Sanctum)
@@ -429,7 +372,13 @@ GET    /api/v1/buckets/{token}/files      # Listar arquivos
 POST   /api/v1/buckets/{bucket}/albums                 # Criar album
 GET    /api/v1/buckets/{bucket}/albums/{album}          # Info
 DELETE /api/v1/buckets/{bucket}/albums/{album}          # Deletar
-GET    /api/v1/buckets/{bucket}/albums/{album}/zip      # Download ZIP
+```
+
+### Acesso publico (share tokens)
+
+```
+GET /api/v1/shared/buckets/{share_token}    # Bucket compartilhado (read-only)
+GET /api/v1/shared/albums/{share_token}     # Album compartilhado (read-only)
 ```
 
 ### Exemplo de Upload
@@ -484,57 +433,57 @@ Todas as tabelas usam o prefixo do modulo ao qual pertencem. Models definem `$ta
 
 | Column           | Type           | Notes                                            |
 | :--------------- | :------------- | :----------------------------------------------- |
-| `id`             | `BIGINT PK`    | Auto-increment                                   |
+| `id`             | `VARCHAR PK`   | UUID via HasUuids                                |
 | `token`          | `UUID`         | Unique, indexed                                  |
-| `bucket_id`      | `BIGINT FK`    | Nullable, references `vault_buckets`             |
-| `album_id`       | `BIGINT FK`    | Nullable, references `vault_albums`              |
-| `uploaded_by`    | `BIGINT FK`    | Nullable, references `identity_users`            |
+| `uploaded_by`    | `VARCHAR FK`   | Nullable, references `identity_users`            |
 | `original_name`  | `VARCHAR(255)` |                                                  |
-| `storage_path`   | `VARCHAR(512)` | Path no S3                                       |
+| `storage_path`   | `VARCHAR(512)` | Path no storage disk                             |
 | `mime_type`      | `VARCHAR(127)` |                                                  |
-| `file_size`      | `BIGINT`       | Bytes                                            |
+| `file_size`      | `INTEGER`      | Bytes                                            |
 | `password_hash`  | `VARCHAR(255)` | Nullable, Argon2                                 |
 | `status`         | `VARCHAR(20)`  | Enum cast: pending, clean, infected, quarantined |
-| `thumbnail_path` | `VARCHAR(512)` | Nullable, path no S3                             |
+| `thumbnail_path` | `VARCHAR(512)` | Nullable                                         |
 | `is_one_time`    | `BOOLEAN`      | Default false                                    |
-| `expires_at`     | `TIMESTAMP`    | Indexed para cleanup                             |
-| `created_at`     | `TIMESTAMP`    |                                                  |
-| `updated_at`     | `TIMESTAMP`    |                                                  |
-| `deleted_at`     | `TIMESTAMP`    | Nullable, soft deletes para quarentena           |
+| `expires_at`     | `DATETIME`     | Indexed para cleanup                             |
+| `created_at`     | `DATETIME`     |                                                  |
+| `updated_at`     | `DATETIME`     |                                                  |
+| `deleted_at`     | `DATETIME`     | Nullable, soft deletes para quarentena           |
+| `bucket_id`      | `VARCHAR FK`   | Nullable, references `vault_buckets`             |
+| `album_id`       | `VARCHAR FK`   | Nullable, references `vault_albums`              |
 
 ### `vault_buckets`
 
 | Column        | Type           | Notes                       |
 | :------------ | :------------- | :-------------------------- |
-| `id`          | `BIGINT PK`    |                             |
-| `user_id`     | `BIGINT FK`    | References `identity_users` |
+| `id`          | `VARCHAR PK`   | UUID via HasUuids           |
+| `user_id`     | `VARCHAR FK`   | References `identity_users` |
 | `token`       | `UUID`         | Unique, token privado       |
 | `share_token` | `UUID`         | Nullable, token publico     |
 | `name`        | `VARCHAR(255)` | Nullable                    |
-| `created_at`  | `TIMESTAMP`    |                             |
-| `updated_at`  | `TIMESTAMP`    |                             |
+| `created_at`  | `DATETIME`     |                             |
+| `updated_at`  | `DATETIME`     |                             |
 
 ### `vault_albums`
 
 | Column        | Type           | Notes                      |
 | :------------ | :------------- | :------------------------- |
-| `id`          | `BIGINT PK`    |                            |
-| `bucket_id`   | `BIGINT FK`    | References `vault_buckets` |
+| `id`          | `VARCHAR PK`   | UUID via HasUuids          |
+| `bucket_id`   | `VARCHAR FK`   | References `vault_buckets` |
 | `name`        | `VARCHAR(255)` |                            |
 | `is_shared`   | `BOOLEAN`      | Default false              |
 | `share_token` | `UUID`         | Nullable                   |
-| `created_at`  | `TIMESTAMP`    |                            |
-| `updated_at`  | `TIMESTAMP`    |                            |
+| `created_at`  | `DATETIME`     |                            |
+| `updated_at`  | `DATETIME`     |                            |
 
 ### `security_blocked_ips`
 
-| Column          | Type        | Notes            |
-| :-------------- | :---------- | :--------------- |
-| `id`            | `BIGINT PK` |                  |
-| `ip`            | `INET`      | Unique           |
-| `reason`        | `TEXT`      |                  |
-| `blocked_until` | `TIMESTAMP` | Nullable (perma) |
-| `created_at`    | `TIMESTAMP` |                  |
+| Column          | Type         | Notes             |
+| :-------------- | :----------- | :---------------- |
+| `id`            | `VARCHAR PK` | UUID via HasUuids |
+| `ip`            | `VARCHAR`    | Unique            |
+| `reason`        | `TEXT`       |                   |
+| `blocked_until` | `DATETIME`   | Nullable (perma)  |
+| `created_at`    | `DATETIME`   |                   |
 
 ### ERD
 
@@ -553,87 +502,15 @@ security_blocked_ips (standalone, security module)
 Arquivos expiram automaticamente. O TTL eh calculado com uma curva cubica baseada na proporcao do tamanho do arquivo em relacao ao limite maximo.
 
 ```
-TTL em dias
-
-365 |━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╮
-    |                                     ╲
-    |                                      ╲
-    |                                       ╲
-    |                                        ╲
- 30 |                                         ━━━
-    └──────────────────────────────────────────────
-    0%                  50%                  100%
-              Tamanho do arquivo / Limite maximo
+Formula: TTL = min + (max - min) * (1 - ratio)^3
 ```
 
-| Tamanho (% do limite) | TTL aproximado |
-| :-------------------: | :------------- |
-|         0-50%         | ~11-12 meses   |
-|          75%          | ~6 meses       |
-|          90%          | ~2 meses       |
-|         100%          | ~30 dias       |
+| Contexto    | TTL min | TTL max |
+| :---------- | :------ | :------ |
+| Anonimo     | 1 dia   | 7 dias  |
+| Autenticado | 1 dia   | 30 dias |
 
-Usuarios autenticados podem definir TTL customizado (dentro dos limites). Uploads anonimos usam a curva automatica com TTL maximo reduzido.
-
-## Queues (Horizon)
-
-Filas dedicadas por tipo de processamento. Horizon gerencia workers com auto-scaling.
-
-```
-┌──────────────────────────────────────────┐
-│             Laravel Horizon              │
-├──────────────────────────────────────────┤
-│                                          │
-│  Queue: default                          │
-│    Propensity: general jobs              │
-│                                          │
-│  Queue: thumbnails                       │
-│    Job: GenerateThumbnailJob             │
-│    Workers: min 1 / max 3               │
-│    Timeout: 60s                          │
-│                                          │
-│  Queue: antivirus                        │
-│    Job: ScanFileJob                      │
-│    Workers: min 1 / max 2               │
-│    Timeout: 120s / retry_after: 180s    │
-│    Backoff: [1, 5, 10]                  │
-│                                          │
-│  Queue: zip                              │
-│    Job: CreateZipArchiveJob              │
-│    Workers: min 1 / max 5               │
-│    Timeout: 300s                         │
-│                                          │
-│  Queue: reputation                       │
-│    Job: CheckFileReputationJob           │
-│    Workers: 1                            │
-│    Middleware: RateLimited (VirusTotal)  │
-│                                          │
-└──────────────────────────────────────────┘
-```
-
-## Storage (S3-Compatible)
-
-Todos os arquivos sao armazenados via Flysystem S3 driver. Compativel com Cloudflare R2, AWS S3 e MinIO para desenvolvimento local.
-
-```env
-FILESYSTEM_DISK=s3
-
-AWS_ACCESS_KEY_ID=your-key
-AWS_SECRET_ACCESS_KEY=your-secret
-AWS_DEFAULT_REGION=auto
-AWS_BUCKET=h-vault
-AWS_ENDPOINT=https://account-id.r2.cloudflarestorage.com
-AWS_USE_PATH_STYLE_ENDPOINT=true
-```
-
-Estrutura de paths no bucket:
-
-```
-h-vault/
-├── files/{year}/{month}/{uuid}.{ext}          # Arquivos originais
-├── thumbnails/{year}/{month}/{uuid}_thumb.webp # Thumbnails
-└── zip/{uuid}.zip                              # ZIPs temporarios
-```
+Usuarios autenticados podem definir TTL customizado (dentro dos limites via `VAULT_TTL_CUSTOM_OVERRIDE`). Uploads anonimos usam a curva automatica.
 
 ## Security
 
@@ -647,18 +524,19 @@ Limites configurados no modulo `security` via `RateLimiter::for()`:
 | `GET /f/{token}/*`  | 100/min por IP | 300/min por user |
 | `POST /api/v1/auth` | 5/min por IP   | -                |
 
-### CAPTCHA
+### IP Blocking
 
-Cloudflare Turnstile na landing page e no upload anonimo. Configuravel via interface contract — swap para reCAPTCHA ou hCaptcha sem mudar codigo.
+Middleware `vault.ip-block` aplicado em todas as rotas do vault. IPs bloqueados sao cacheados e verificados antes de processar a request. Bloqueios podem ser temporarios ou permanentes. CRUD completo via `panel-admin`.
 
-### Antivirus Pipeline
+### Antivirus Pipeline (MVP)
 
 1. Upload completa -> `FileUploaded` event
 2. `ScanFileListener` despacha `ScanFileJob` na fila `antivirus`
-3. ClamAV faz scan local do arquivo
+3. `NullScanner` marca todos os arquivos como `clean` (MVP)
 4. `FileScanCompleted` event com resultado
-5. `CheckFileReputationListener` consulta VirusTotal API
-6. Se malicioso -> `FileQuarantined` event -> soft delete
+5. `UpdateFileStatusListener` atualiza status do arquivo
+
+O contrato `AntivirusScanner` permite trocar para ClamAV sem mudar o resto do codigo (ver ADR-0005).
 
 ### Protecao por Senha
 
@@ -670,45 +548,69 @@ Flag `is_one_time` marca arquivos para delecao apos primeiro download bem-sucedi
 
 ## Landing Page
 
-Pagina publica construida com Livewire + Flux UI. Layout simples e funcional:
+Pagina publica construida com Livewire + Tailwind CSS no modulo `panel-guest`.
 
 ```
 ┌──────────────────────────────────────────────────────┐
 │                                                      │
 │                      H-Vault                         │
-│           Hospedagem temporaria de arquivos           │
+│             Temporary file hosting                   │
 │                                                      │
 │  ┌────────────────────────────────────────────────┐  │
 │  │                                                │  │
-│  │     Arraste um arquivo ou clique para           │  │
-│  │              fazer upload                       │  │
+│  │     Choose a file or drag and drop             │  │
 │  │                                                │  │
-│  │         [ Limite: 100MB anonimo ]              │  │
+│  │         [ Max: 100 MB ]                        │  │
 │  │                                                │  │
 │  └────────────────────────────────────────────────┘  │
 │                                                      │
-│  Senha (opcional): [______________]                  │
-│  Expira em:        [  24 horas  v ]                 │
-│  Download unico:   [ ] Sim                          │
+│  Password protection: [______________]               │
+│  Expires in:          [  24 hours  v ]               │
+│  One-time download:   [ ]                            │
 │                                                      │
 │  ┌────────────────────────────────────────────────┐  │
-│  │            [ Fazer Upload ]                    │  │
+│  │              [ Upload ]                        │  │
+│  └────────────────────────────────────────────────┘  │
+│                                                      │
+│  Apos upload:                                        │
+│  ┌────────────────────────────────────────────────┐  │
+│  │  ✓ File uploaded!                             │  │
+│  │  Preview link: https://h-vault.../preview/... │  │
+│  │  Expires 23 hours from now                    │  │
+│  │  [Copy] [Upload another file]                 │  │
 │  └────────────────────────────────────────────────┘  │
 │                                                      │
 ├──────────────────────────────────────────────────────┤
-│                                                      │
-│  SDK & Integracao                                    │
-│                                                      │
-│  curl -X PUT https://h-vault.example.com/api/v1/... │
-│                                                      │
-│  Pacotes:                                            │
-│    Python: pip install h-vault                       │
-│    Node:   npm install h-vault-sdk                   │
-│    PHP:    composer require he4rt/h-vault-sdk        │
-│                                                      │
+│  API Usage                                           │
+│  curl -X PUT https://h-vault.../api/v1/files ...    │
 ├──────────────────────────────────────────────────────┤
-│  Total de arquivos hospedados: 12,345   (real-time) │
+│  N files hosted  (cached counter, 5 min TTL)         │
 └──────────────────────────────────────────────────────┘
+```
+
+## Storage
+
+Arquivos sao armazenados via Flysystem. O disk eh configuravel via `VAULT_STORAGE_DISK` (default: `s3`). Para desenvolvimento local, usar `local`.
+
+```env
+# Desenvolvimento (local)
+VAULT_STORAGE_DISK=local
+
+# Producao (S3/R2/MinIO)
+VAULT_STORAGE_DISK=s3
+AWS_ACCESS_KEY_ID=your-key
+AWS_SECRET_ACCESS_KEY=your-secret
+AWS_DEFAULT_REGION=auto
+AWS_BUCKET=h-vault
+AWS_ENDPOINT=https://account-id.r2.cloudflarestorage.com
+AWS_USE_PATH_STYLE_ENDPOINT=true
+```
+
+Estrutura de paths no storage:
+
+```
+files/{year}/{month}/{uuid}.{ext}          # Arquivos originais
+thumbnails/{year}/{month}/{uuid}_thumb.webp # Thumbnails
 ```
 
 ## Configuracao
@@ -720,94 +622,72 @@ Pagina publica construida com Livewire + Flux UI. Layout simples e funcional:
 APP_NAME=H-Vault
 APP_URL=https://h-vault.example.com
 
-# Database
-DB_CONNECTION=pgsql
-DB_HOST=127.0.0.1
-DB_PORT=5432
-DB_DATABASE=h_vault
-DB_USERNAME=postgres
-DB_PASSWORD=secret
+# Database (SQLite para dev, PostgreSQL para prod)
+DB_CONNECTION=sqlite
 
-# Redis
-REDIS_HOST=127.0.0.1
-REDIS_PORT=6379
+# Queue (database para dev, redis para prod)
+QUEUE_CONNECTION=database
 
-# Storage (S3/R2)
-FILESYSTEM_DISK=s3
-AWS_ACCESS_KEY_ID=
-AWS_SECRET_ACCESS_KEY=
-AWS_DEFAULT_REGION=auto
-AWS_BUCKET=h-vault
-AWS_ENDPOINT=
+# Storage
+VAULT_STORAGE_DISK=local
 
 # Vault
-VAULT_UPLOAD_LIMIT_MB=1000
-VAULT_UPLOAD_LIMIT_ANONYMOUS_MB=100
-VAULT_TTL_MAX_DAYS=365
-VAULT_TTL_MIN_DAYS=30
+VAULT_UPLOAD_LIMIT_MB=100
+VAULT_UPLOAD_LIMIT_AUTH_MB=500
+VAULT_TTL_ANON_MIN_DAYS=1
+VAULT_TTL_ANON_MAX_DAYS=7
+VAULT_TTL_AUTH_MIN_DAYS=1
+VAULT_TTL_AUTH_MAX_DAYS=30
 VAULT_ALLOWED_MIMES=image/*,video/*,audio/*,application/pdf,application/zip
-
-# Security
-VAULT_RATE_LIMIT=100
-VAULT_RATE_LIMIT_WINDOW_MS=60000
-CAPTCHA_DRIVER=turnstile
-CAPTCHA_SITE_KEY=
-CAPTCHA_SECRET_KEY=
-VIRUSTOTAL_API_KEY=
-VIRUSTOTAL_REPUTATION_LIMIT=5
+VAULT_RATE_LIMIT_ANON=10
+VAULT_RATE_LIMIT_AUTH=60
 
 # Antivirus
-CLAMAV_BINARY_PATH=/usr/bin/clamscan
-
-# Broadcasting (Reverb)
-BROADCAST_CONNECTION=reverb
-REVERB_APP_ID=
-REVERB_APP_KEY=
-REVERB_APP_SECRET=
+ANTIVIRUS_DRIVER=null
 ```
 
 ### Docker Compose (Desenvolvimento)
 
 ```yaml
 services:
-    h-vault-db:
+    sycorax-db:
         image: postgres:18
-        environment:
-            POSTGRES_DB: h_vault
-            POSTGRES_USER: postgres
-            POSTGRES_PASSWORD: postgres
         ports: ['5432:5432']
 
-    h-vault-redis:
+    sycorax-redis:
         image: redis:8
         ports: ['6379:6379']
 
-    h-vault-minio:
+    sycorax-minio:
         image: minio/minio
         command: server /data --console-address ":9001"
-        environment:
-            MINIO_ROOT_USER: minioadmin
-            MINIO_ROOT_PASSWORD: minioadmin
-        ports:
-            - '9000:9000'
-            - '9001:9001'
+        ports: ['9000:9000', '9001:9001']
 
-    h-vault-mailpit:
+    sycorax-mailpit:
         image: axllent/mailpit
-        ports:
-            - '1025:1025'
-            - '8025:8025'
+        ports: ['1025:1025', '8025:8025']
 ```
+
+## ADRs (Architecture Decision Records)
+
+| ADR  | Decisao                                             |
+| :--- | :-------------------------------------------------- |
+| 0001 | Event-driven module communication                   |
+| 0002 | Incremental migrations per PRD                      |
+| 0003 | No CAPTCHA anywhere                                 |
+| 0004 | Proxy streaming for downloads                       |
+| 0005 | NullScanner as default antivirus in MVP             |
+| 0006 | Static counter in MVP, real-time analytics deferred |
 
 ## Quick Start
 
 ```bash
 # 1. Clone e instale
-git clone https://github.com/he4rt/h-vault.git
+git clone https://github.com/danielhe4rt/h-vault.git
 cd h-vault
 make setup
 
-# 2. Suba a infra
+# 2. Suba a infra (PostgreSQL, Redis, MinIO, Mailpit)
 make env-up
 
 # 3. Configure o .env
@@ -821,30 +701,30 @@ php artisan migrate --seed
 make dev
 
 # 6. Acesse
-# Landing:     http://localhost:8000
-# User Panel:  http://localhost:8000/app
-# Admin Panel: http://localhost:8000/admin
-# Horizon:     http://localhost:8000/horizon
+# Landing:     http://h-vault.test
+# User Panel:  http://h-vault.test/app
+# Admin Panel: http://h-vault.test/admin
 # MinIO:       http://localhost:9001
 # Mailpit:     http://localhost:8025
 ```
 
 ## Makefile
 
-| Comando              | Alias | Descricao                             |
-| :------------------- | :---: | :------------------------------------ |
-| `make test`          |  `t`  | Rodar todos os testes Pest            |
-| `make test-feature`  |       | Somente testes de feature             |
-| `make pint`          |       | Formatar com Pint                     |
-| `make phpstan`       |  `p`  | Analise estatica                      |
-| `make check`         |  `c`  | Dry-run: Rector + Pint + PHPStan      |
-| `make format`        |  `f`  | Rector + Pint fixes                   |
-| `make route-list`    | `rl`  | Listar rotas                          |
-| `make migrate-fresh` |       | Reset e seed do banco                 |
-| `make env-up`        |       | Docker Compose up                     |
-| `make env-down`      |       | Docker Compose down                   |
-| `make dev`           |       | Server + Queue + Pail + Vite + Reverb |
-| `make horizon`       |       | Iniciar Horizon                       |
+| Comando              | Alias | Descricao                        |
+| :------------------- | :---: | :------------------------------- |
+| `make test`          |  `t`  | Rodar todos os testes Pest       |
+| `make test-feature`  |       | Somente testes de feature        |
+| `make test-unit`     |       | Somente testes de unit           |
+| `make pint`          |       | Formatar com Pint                |
+| `make phpstan`       |  `p`  | Analise estatica                 |
+| `make check`         |  `c`  | Dry-run: Rector + Pint + PHPStan |
+| `make format`        |  `f`  | Rector + Pint fixes              |
+| `make route-list`    | `rl`  | Listar rotas                     |
+| `make migrate-fresh` |       | Reset e seed do banco            |
+| `make env-up`        |       | Docker Compose up                |
+| `make env-down`      |       | Docker Compose down              |
+| `make dev`           |       | Server + Queue + Pail + Vite     |
+| `make setup`         |       | Setup inicial do projeto         |
 
 ## Licenca
 
