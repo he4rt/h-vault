@@ -27,7 +27,7 @@ class Landing extends Component
     /** @var array{token: string, url: string, original_name: string, expires_at: string}|null */
     public ?array $uploadedFile = null;
 
-    public function upload(StoreFileAction $action): void
+    public function store(StoreFileAction $action): void
     {
         $maxSizeKb = (int) config('vault.upload.max_size_mb', 100) * 1024;
 

@@ -36,7 +36,7 @@ test('landing page displays file counter', function (): void {
 
 test('file upload requires a file', function (): void {
     livewire(Landing::class)
-        ->call('upload')
+        ->call('store')
         ->assertHasErrors(['file' => 'required']);
 });
 
@@ -48,7 +48,7 @@ test('file upload succeeds with valid file', function (): void {
     livewire(Landing::class)
         ->set('file', $upload)
         ->set('expiresIn', '24h')
-        ->call('upload')
+        ->call('store')
         ->assertHasNoErrors()
         ->assertSet('uploadedFile.original_name', 'test-image.png');
 });
@@ -60,7 +60,7 @@ test('upload success state shows preview link', function (): void {
 
     livewire(Landing::class)
         ->set('file', $upload)
-        ->call('upload')
+        ->call('store')
         ->assertSee('File uploaded')
         ->assertSee('Preview link')
         ->assertSee('Upload another file');
@@ -73,7 +73,7 @@ test('reset upload returns to form state', function (): void {
 
     livewire(Landing::class)
         ->set('file', $upload)
-        ->call('upload')
+        ->call('store')
         ->assertSet('uploadedFile.original_name', 'reset-test.png')
         ->call('resetUpload')
         ->assertSet('uploadedFile', null)

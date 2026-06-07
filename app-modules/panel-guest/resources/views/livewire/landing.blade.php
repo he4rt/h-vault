@@ -25,10 +25,18 @@
                         />
                         <button
                             type="button"
-                            onclick="navigator.clipboard.writeText('{{ url($uploadedFile['url']) }}')"
+                            x-data="{ copied: false }"
+                            x-on:click="
+                                const input = $el.previousElementSibling;
+                                input.select();
+                                document.execCommand('copy');
+                                copied = true;
+                                setTimeout(() => copied = false, 2000);
+                            "
                             class="shrink-0 rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
                         >
-                            Copy
+                            <span x-show="!copied">Copy</span>
+                            <span x-show="copied" x-cloak>Copied!</span>
                         </button>
                     </div>
                 </div>
@@ -49,7 +57,7 @@
         </div>
     @else
         {{-- Upload form --}}
-        <form wire:submit="upload" class="space-y-6">
+        <form wire:submit="store" class="space-y-6">
             <div class="rounded-lg border-2 border-dashed border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 p-8 text-center hover:border-indigo-400 dark:hover:border-indigo-500 transition-colors">
                 <div class="mb-4">
                     <svg class="mx-auto h-12 w-12 text-zinc-400 dark:text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -135,8 +143,8 @@
                 class="w-full rounded-md bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-zinc-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 wire:loading.attr="disabled"
             >
-                <span wire:loading.remove wire:target="upload">Upload</span>
-                <span wire:loading wire:target="upload">Uploading...</span>
+                <span wire:loading.remove wire:target="store">Upload</span>
+                <span wire:loading wire:target="store">Uploading...</span>
             </button>
         </form>
 
